@@ -1,6 +1,5 @@
 package edu.put.listapp
 
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,7 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,24 +16,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import edu.put.listapp.model.Loop
 import edu.put.listapp.model.Track
 
 @Composable
-fun Details(activity: ComponentActivity, track: Track) {
+fun Details(track: Track) {
     val stopwatchViewModel: StopwatchViewModel = viewModel()
-    val stopwatchState = remember { StopwatchState(stopwatchViewModel) }
-
-     LaunchedEffect(activity) {
-         activity.lifecycle.addObserver(LifecycleEventObserver { _, event ->
-             if (event == Lifecycle.Event.ON_DESTROY) {
-                 stopwatchViewModel.updateElapsedMilliseconds(stopwatchState.elapsedMiliseconds)
-             }
-         })
-     }
+    val stopwatchState = remember { StopwatchState(track.name, stopwatchViewModel) }
 
     LazyColumn(
         modifier = Modifier

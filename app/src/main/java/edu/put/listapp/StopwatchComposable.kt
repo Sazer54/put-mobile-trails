@@ -39,7 +39,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class StopwatchState(viewModel: StopwatchViewModel) {
+class StopwatchState(private val trackName: String, viewModel: StopwatchViewModel) {
     private val viewModel = viewModel
     private var job: Job? = null
     var isRunning by mutableStateOf(false)
@@ -50,8 +50,8 @@ class StopwatchState(viewModel: StopwatchViewModel) {
         job = CoroutineScope(Dispatchers.Main).launch {
             while (isRunning) {
                 delay(1000L)
-                viewModel.updateElapsedMilliseconds(elapsedMiliseconds + 1000)
-                elapsedMiliseconds = viewModel.elapsedMilliseconds.longValue
+                viewModel.updateTime(trackName, elapsedMiliseconds + 1000)
+                elapsedMiliseconds = viewModel.getElapsedTime(trackName)
             }
         }
     }
@@ -62,7 +62,7 @@ class StopwatchState(viewModel: StopwatchViewModel) {
     }
 
     fun resetStopwatch() {
-        viewModel.updateElapsedMilliseconds(0L)
+        viewModel.updateTime(trackName, 0L)
         this.elapsedMiliseconds = 0L
         job?.cancel()
         isRunning = false

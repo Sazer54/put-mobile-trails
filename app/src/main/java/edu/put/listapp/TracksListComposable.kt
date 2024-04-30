@@ -1,5 +1,7 @@
 package edu.put.listapp
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,12 +15,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import edu.put.listapp.model.Track
 
 @Composable
@@ -28,6 +33,7 @@ fun ListComponent(tracksList: List<Track>, onItemClick: (Track) -> Unit) {
             ListItem(
                 name = it.name,
                 address = it.address,
+                thumbUrl = it.thumbURL,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(5.dp)
@@ -38,10 +44,11 @@ fun ListComponent(tracksList: List<Track>, onItemClick: (Track) -> Unit) {
 }
 
 @Composable
-fun ListItem(name: String, address: String, modifier: Modifier) {
+fun ListItem(name: String, address: String, thumbUrl: String, modifier: Modifier) {
     Card (
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp) // Adjust corner radius as needed
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, Color.Black)
     ){
         Column(
             modifier = modifier
@@ -70,5 +77,4 @@ fun ListItem(name: String, address: String, modifier: Modifier) {
             )
         }
     }
-
 }

@@ -1,13 +1,19 @@
 package edu.put.listapp
 
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 
 class StopwatchViewModel : ViewModel() {
-    val elapsedMilliseconds = mutableLongStateOf(0L)
+    private var elapsedTimeMap = HashMap<String, Long>()
 
-    fun updateElapsedMilliseconds(newElapsed: Long) {
-        elapsedMilliseconds.longValue = newElapsed
+    fun updateTime(trackName: String, newElapsed: Long) {
+        elapsedTimeMap[trackName] = newElapsed
+    }
+
+    fun getElapsedTime(trackName: String): Long {
+        val currentValue = elapsedTimeMap.getOrDefault(trackName, 0L)
+        if (!elapsedTimeMap.containsKey(trackName)) {
+            elapsedTimeMap[trackName] = currentValue
+        }
+        return currentValue
     }
 }
