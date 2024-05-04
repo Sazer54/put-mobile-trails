@@ -67,6 +67,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("XD", "ded")
+    }
 }
 
 @Composable

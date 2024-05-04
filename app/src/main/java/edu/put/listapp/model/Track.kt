@@ -20,6 +20,8 @@ data class Track(
         },
         parcel.readString()!!,
         parcel.readInt()
+
+
     )
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
