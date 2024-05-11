@@ -9,6 +9,7 @@ data class Track(
     val address: String,
     val loops: Map<String, Loop>,
     val thumbURL: String,
+    val largeImgURL: String,
     val secondsElapsed: Int = 0,
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
@@ -18,6 +19,7 @@ data class Track(
         mutableMapOf<String, Loop>().apply {
             parcel.readMap(this, Loop::class.java.classLoader)
         },
+        parcel.readString()!!,
         parcel.readString()!!,
         parcel.readInt()
 
@@ -30,6 +32,7 @@ data class Track(
         parcel.writeString(address)
         parcel.writeMap(loops)
         parcel.writeString(thumbURL)
+        parcel.writeString(largeImgURL)
         parcel.writeInt(secondsElapsed)
     }
 
