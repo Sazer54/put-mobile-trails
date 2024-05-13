@@ -80,7 +80,7 @@ class StopwatchState(private val trackName: String, viewModel: StopwatchViewMode
 @Composable
 fun Stopwatch(stopwatchState: StopwatchState) {
     Box(
-        modifier = Modifier.padding(horizontal = 20.dp)
+        modifier = Modifier.padding(20.dp)
     ) {
         Box(
             modifier = Modifier

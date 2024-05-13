@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,9 +19,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -79,34 +88,93 @@ fun MyApp(context: Context, tracksList: List<Track>) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
 
-    if (isTablet) {
-        var selectedTrack: Track? by remember { mutableStateOf(null) }
+    Surface(
+        modifier = Modifier
+            .fillMaxSize(),
+        color = MaterialTheme.colorScheme.primaryContainer
+    ) {
+        if (isTablet) {
+            var selectedTrack: Track? by remember { mutableStateOf(null) }
 
-        TabletLayout(tracksList = tracksList, selectedTrack = selectedTrack) {
-            selectedTrack = it
+            TabletLayout(tracksList = tracksList, selectedTrack = selectedTrack) {
+                selectedTrack = it
+            }
+        } else {
+            PhoneLayout(context, tracksList)
         }
-    } else {
-        PhoneLayout(context, tracksList)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TopBar() {
+    TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+        ),
+        title = {
+            Text(
+                text = "Cock",
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhoneLayout(context: Context, tracksList: List<Track>) {
+    var query = remember { mutableStateOf("") }
+    var active = remember { mutableStateOf(false) }
+    val filteredTracksList = tracksList.filter { track ->
+        track.name.contains(query.value, ignoreCase = true)
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
+        Scaffold(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.Start
-        ) {
-            Header()
-            Spacer(modifier = Modifier.height(16.dp))
-            ListComponent(tracksList.toList()) {
-                launchIntentTrackDetails(context, it)
+            topBar = { TopBar() },
+            content = {padding ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    verticalArrangement = Arrangement.Top,
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    SearchBar(
+                        query = query.value,
+                        onQueryChange = { query.value = it },
+                        onSearch = {
+                            active.value = false
+                        },
+                        active = true,
+                        onActiveChange = {
+                            active.value = it
+                        },
+                        content = {
+                            ListComponent(filteredTracksList) {
+                                launchIntentTrackDetails(context, it)
+                            }
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Search tracks...",
+                                style = TextStyle(
+                                    fontSize = 20.sp,
+                                    fontFamily = FontFamily.SansSerif,
+                                    color = Color.Gray
+                                ),
+                                textAlign = TextAlign.Left
+                            )
+                        }
+                    )
+                }
             }
-        }
+        )
     }
 }
 
