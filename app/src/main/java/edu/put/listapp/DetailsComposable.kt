@@ -8,11 +8,13 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -40,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -49,21 +53,23 @@ import edu.put.listapp.model.Track
 import kotlinx.coroutines.launch
 
 @Composable
-fun Details(track: Track, listState: LazyListState) {
+fun Details(track: Track, scrollState: ScrollState, headerHeight: Dp) {
     val stopwatchViewModel: StopwatchViewModel = viewModel()
     val stopwatchState = remember { StopwatchState(track.name, stopwatchViewModel) }
 
-    LazyColumn(
+    Column(
         modifier = Modifier
-            .fillMaxSize(),
-        state = listState,
+            .fillMaxSize()
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.Start
     ) {
-        item {
-            ExpandedTopBar(track)
-        }
-        item {
+        Spacer(Modifier.height(headerHeight))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(color = MaterialTheme.colorScheme.background)
+        ){
             Stopwatch(stopwatchState)
             Text(
                 text=track.desc,
@@ -83,73 +89,14 @@ fun Details(track: Track, listState: LazyListState) {
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
             )
-        }
-        var index = 1
-        items(track.loops.values.toList()) {
-            ListItem(loop = it, index = index++)
-        }
-    }
-}
-
-@Composable
-private fun ExpandedTopBar(track: Track) {
-    val context = LocalContext.current
-    Box(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.primary)
-            .fillMaxWidth()
-            .height(200.dp),
-        contentAlignment = Alignment.BottomStart
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            AsyncImage(
-                model = track.largeImgURL,
-                contentDescription = "XD",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.FillBounds
-            )
-            CameraButton()
-            Text(
-                modifier = Modifier.padding(16.dp)
-                    .align(Alignment.BottomStart)
-                    .offset(x = 2.dp, y = 2.dp)
-                    .alpha(0.75f),
-                text = track.name,
-                color = Color.DarkGray,
-                style = TextStyle(
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Text(
-                modifier = Modifier.padding(16.dp)
-                    .align(Alignment.BottomStart),
-                text = track.name,
-                color = MaterialTheme.colorScheme.onPrimary,
-                style = TextStyle(
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            FloatingActionButton(
-                onClick = { (context as Activity).finish() }, // Finish the current activity when clicked
-                modifier = Modifier
-                    .align(Alignment.TopStart) // Align to the top start
-                    .padding(16.dp), // Add some padding
-                content = {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack, // Use the ArrowBack icon
-                        contentDescription = "Go back"
-                    )
-                }
-            )
-
+            var index = 1
+            track.loops.values.toList().forEach {
+                ListItem(loop = it, index = index++)
+            }
         }
 
     }
 }
-
-
 
 @Composable
 fun ListItem(loop: Loop, index: Int) {
@@ -176,41 +123,3 @@ fun ListItem(loop: Loop, index: Int) {
     }
 }
 
-@Composable
-fun CameraButton() {
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) {
-            openCamera(context)
-        } else {
-            Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    val coroutineScope = rememberCoroutineScope()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.BottomEnd
-    ) {
-        FloatingActionButton(
-            onClick = {
-                coroutineScope.launch {
-                    launcher.launch(Manifest.permission.CAMERA)
-                }
-            },
-            modifier = Modifier.padding(16.dp).align(Alignment.TopEnd)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.CameraAlt,
-                contentDescription = "Open Camera"
-            )
-        }
-    }
-}
-
-fun openCamera(context: Context) {
-    val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-    context.startActivity(intent)
-}
