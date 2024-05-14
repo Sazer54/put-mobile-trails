@@ -112,6 +112,7 @@ fun AwesomeToolbar(track: Track, scroll: ScrollState, drawerState: DrawerState, 
         Toolbar(scroll, headerHeightPx, toolbarHeightPx, drawerState, scope)
         Title(scroll, track.name, headerHeightPx, toolbarHeightPx)
         CameraButton(scroll, headerHeightPx, toolbarHeightPx)
+        BurgerButton(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx)
     }
 }
 
@@ -321,3 +322,29 @@ fun openCamera(context: Context) {
     context.startActivity(intent)
 }
 
+@Composable
+fun BurgerButton(
+    scroll: ScrollState, drawerState: DrawerState, scope: CoroutineScope,
+    headerHeightPx: Float, toolbarHeightPx: Float) {
+
+    val collapseRange: Float = (headerHeightPx - toolbarHeightPx)
+    val collapseFraction: Float = (scroll.value / collapseRange).coerceIn(0f, 1f)
+
+    AnimatedVisibility(
+        visible = collapseFraction < 1f,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        FloatingActionButton(
+            onClick = {
+                scope.launch {
+                    drawerState.open()
+                }
+            },
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Filled.Menu, contentDescription = "Open menu")
+        }
+    }
+}

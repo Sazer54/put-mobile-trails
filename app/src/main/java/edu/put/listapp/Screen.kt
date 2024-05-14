@@ -1,7 +1,8 @@
 package edu.put.listapp
 
 sealed class Screen(val route: String) {
-    object TrackList : Screen("trackList")
+    object TrackListEasy : Screen("trackListEasy")
+    object TrackListHard: Screen("trackListHard")
     object TrackDetails : Screen("trackDetails/{trackName}") {
         fun createRoute(trackName: String) = "trackDetails/$trackName"
     }

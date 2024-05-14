@@ -127,9 +127,14 @@ fun AppNavigator(tracksList: List<Track>) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    NavHost(navController = navController, startDestination = Screen.TrackList.route) {
-        composable(Screen.TrackList.route) {
-            PhoneLayout(tracksList, navController, drawerState, scope, selectedTrack.value)
+    NavHost(navController = navController, startDestination = Screen.TrackListEasy.route) {
+        composable(Screen.TrackListEasy.route) {
+            val newList = tracksList.filter { it.difficulty == 1 }
+            PhoneLayout(newList, navController, drawerState, scope, selectedTrack.value)
+        }
+        composable(Screen.TrackListHard.route) {
+            val newList = tracksList.filter { it.difficulty >=2 }
+            PhoneLayout(newList, navController, drawerState, scope, selectedTrack.value)
         }
         composable(Screen.TrackDetails.route) { backStackEntry ->
             val trackName = backStackEntry.arguments?.getString("trackName")
@@ -147,7 +152,7 @@ fun AppNavigator(tracksList: List<Track>) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopBar(drawerState: DrawerState, scope: CoroutineScope) {
+fun TopBar(title: String, drawerState: DrawerState, scope: CoroutineScope) {
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = {
@@ -164,7 +169,7 @@ fun TopBar(drawerState: DrawerState, scope: CoroutineScope) {
         ),
         title = {
             Text(
-                text = "Trail tracker",
+                text = title,
             )
         }
     )
@@ -180,6 +185,8 @@ fun PhoneLayout(
     val filteredTracksList = tracksList.filter { track ->
         track.name.contains(query.value, ignoreCase = true)
     }
+    val title = if (navController.currentDestination?.route == Screen.TrackListEasy.route)
+        "Easy tracks" else "Hard tracks"
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = { DrawerContent(navController, drawerState, scope, selectedTrack) },
@@ -190,7 +197,7 @@ fun PhoneLayout(
             ) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    topBar = { TopBar(drawerState, scope) },
+                    topBar = { TopBar(title, drawerState, scope) },
                     content = {padding ->
                         Column(
                             modifier = Modifier
@@ -278,10 +285,22 @@ fun DrawerContent(navController: NavController, drawerState: DrawerState, scope:
                 icon = {
                     Icon(Icons.Filled.Landscape, contentDescription = "Menu")
                 },
-                label = { Text(text = "Tracks list") },
-                selected = navController.currentDestination?.route == Screen.TrackList.route,
+                label = { Text(text = "Easy tracks list") },
+                selected = navController.currentDestination?.route == Screen.TrackListEasy.route,
                 onClick = {
-                    navController.navigate(Screen.TrackList.route)
+                    navController.navigate(Screen.TrackListEasy.route)
+                    if (drawerState.isOpen) scope.launch { drawerState.close() }
+                }
+            )
+
+            NavigationDrawerItem(
+                icon = {
+                    Icon(Icons.Filled.Landscape, contentDescription = "Menu")
+                },
+                label = { Text(text = "Hard tracks list") },
+                selected = navController.currentDestination?.route == Screen.TrackListHard.route,
+                onClick = {
+                    navController.navigate(Screen.TrackListHard.route)
                     if (drawerState.isOpen) scope.launch { drawerState.close() }
                 }
             )

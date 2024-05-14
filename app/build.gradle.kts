@@ -76,6 +76,6 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.1.0")
     implementation("androidx.camera:camera-view:1.1.0")
     implementation("me.onebone:toolbar-compose:2.3.5")
-    implementation("androidx.navigation:navigation-compose:2.4.0-alpha10")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
 
 }

@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -68,6 +69,7 @@ fun Details(track: Track, scrollState: ScrollState, headerHeight: Dp) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(LocalConfiguration.current.screenHeightDp.dp)
                 .background(color = MaterialTheme.colorScheme.background)
         ){
             Stopwatch(stopwatchState)

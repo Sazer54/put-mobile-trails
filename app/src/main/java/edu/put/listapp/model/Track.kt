@@ -11,42 +11,6 @@ data class Track(
     val thumbURL: String,
     val largeImgURL: String,
     val secondsElapsed: Int = 0,
-) : Parcelable {
-    constructor(parcel: Parcel) : this(
-        parcel.readString()!!,
-        parcel.readString()!!,
-        parcel.readString()!!,
-        mutableMapOf<String, Loop>().apply {
-            parcel.readMap(this, Loop::class.java.classLoader)
-        },
-        parcel.readString()!!,
-        parcel.readString()!!,
-        parcel.readInt()
+    val difficulty: Int,
+)
 
-
-    )
-
-    override fun writeToParcel(parcel: Parcel, flags: Int) {
-        parcel.writeString(name)
-        parcel.writeString(desc)
-        parcel.writeString(address)
-        parcel.writeMap(loops)
-        parcel.writeString(thumbURL)
-        parcel.writeString(largeImgURL)
-        parcel.writeInt(secondsElapsed)
-    }
-
-    override fun describeContents(): Int {
-        return 0
-    }
-
-    companion object CREATOR : Parcelable.Creator<Track> {
-        override fun createFromParcel(parcel: Parcel): Track {
-            return Track(parcel)
-        }
-
-        override fun newArray(size: Int): Array<Track?> {
-            return arrayOfNulls(size)
-        }
-    }
-}
