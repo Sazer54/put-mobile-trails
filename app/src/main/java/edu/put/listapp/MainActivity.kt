@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Landscape
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
@@ -127,7 +128,10 @@ fun AppNavigator(tracksList: List<Track>) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    NavHost(navController = navController, startDestination = Screen.TrackListEasy.route) {
+    NavHost(navController = navController, startDestination = Screen.HomePage.route) {
+        composable(Screen.HomePage.route) {
+            HomePage(navController, drawerState, scope, selectedTrack.value)
+        }
         composable(Screen.TrackListEasy.route) {
             val newList = tracksList.filter { it.difficulty == 1 }
             PhoneLayout(newList, navController, drawerState, scope, selectedTrack.value)
@@ -160,16 +164,21 @@ fun TopBar(title: String, drawerState: DrawerState, scope: CoroutineScope) {
                     drawerState.open()
                 }
             }) {
-                Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = Color.White)
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            titleContentColor = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = Color.White
         ),
         title = {
             Text(
                 text = title,
+                style = TextStyle(
+                    fontSize = 20.sp,
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Bold
+                )
             )
         }
     )
@@ -281,6 +290,17 @@ fun DrawerContent(navController: NavController, drawerState: DrawerState, scope:
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
+            NavigationDrawerItem(
+                icon = {
+                    Icon(Icons.Filled.Home, contentDescription = "Home")
+                },
+                label = { Text(text = "Home") },
+                selected = navController.currentDestination?.route == Screen.HomePage.route,
+                onClick = {
+                    navController.navigate(Screen.HomePage.route)
+                    if (drawerState.isOpen) scope.launch { drawerState.close() }
+                }
+            )
             NavigationDrawerItem(
                 icon = {
                     Icon(Icons.Filled.Landscape, contentDescription = "Menu")
