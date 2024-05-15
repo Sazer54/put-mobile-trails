@@ -1,5 +1,6 @@
 package edu.put.listapp
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -31,31 +32,19 @@ import edu.put.listapp.model.Track
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
-fun HomePage(navController: NavController, drawerState: DrawerState, scope: CoroutineScope, selectedTrack: Track?) {
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = { DrawerContent(
-            navController = navController,
-            drawerState = drawerState,
-            scope = scope,
-            selectedTrack = selectedTrack
-        )
+fun HomePage(drawerState: DrawerState, scope: CoroutineScope) {
+    Scaffold(
+        topBar = {
+            TopBar(title = "Trail tracker", drawerState = drawerState, scope = scope)
         },
-        content = {
-            Scaffold(
-                topBar = {
-                    TopBar(title = "Trail Tracker", drawerState = drawerState, scope = scope)
-                },
-                content = { padding ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding),
-                    ) {
-                        HomePageContent()
-                    }
-                }
-            )
+        content = { padding ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                HomePageContent()
+            }
         }
     )
 }

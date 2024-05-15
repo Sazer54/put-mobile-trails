@@ -4,14 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.provider.MediaStore
-import android.util.Log
 import android.widget.Toast
-import android.widget.Toolbar
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.Px
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,18 +15,16 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Landscape
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,7 +32,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,9 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,18 +50,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import edu.put.listapp.model.Track
@@ -82,28 +70,66 @@ private val headerHeight = 275.dp
 
 @Composable
 fun TrackDetailsScreen(
-    track: Track?,
+    trackViewModel: TrackViewModel,
     navController: NavController,
     drawerState: DrawerState,
-    scope: CoroutineScope
+    scope: CoroutineScope,
 ) {
     val scrollState = rememberScrollState(0)
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = { DrawerContent(navController, drawerState, scope, track) },
-        content = {
-            Box {
-                if (track != null) {
-                    AwesomeToolbar(track, scrollState, drawerState, scope)
-                } else {
-                    Text(text = "XD")
-                }
-            }
-        })
+    Box {
+        if (trackViewModel.selectedTrack != null) {
+            AwesomeToolbar(trackViewModel.selectedTrack!!, scrollState, drawerState, scope)
+        } else {
+            ChooseTrackInfo(drawerState, scope)
+        }
+    }
 }
 
 @Composable
-fun AwesomeToolbar(track: Track, scroll: ScrollState, drawerState: DrawerState, scope: CoroutineScope) {
+fun ChooseTrackInfo(drawerState: DrawerState, scope: CoroutineScope) {
+    Scaffold(
+        topBar = { TopBar(title = "Track details", drawerState = drawerState, scope = scope)},
+        content = { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = MaterialTheme.colorScheme.background)
+                    .padding(padding)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.Center)
+                        .padding(20.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Landscape,
+                        contentDescription = "Menu",
+                        modifier = Modifier
+                            .size(100.dp)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                    Text(
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        ),
+                        text = "Pick a track from the lists to see its details!",
+                    )
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun AwesomeToolbar(
+    track: Track,
+    scroll: ScrollState,
+    drawerState: DrawerState,
+    scope: CoroutineScope
+) {
     val headerHeightPx = with(LocalDensity.current) { headerHeight.toPx() }
     val toolbarHeightPx = with(LocalDensity.current) { 64.dp.toPx() }
     Box(modifier = Modifier.fillMaxSize()) {
@@ -111,8 +137,9 @@ fun AwesomeToolbar(track: Track, scroll: ScrollState, drawerState: DrawerState, 
         Details(track, scroll, headerHeight)
         Toolbar(scroll, headerHeightPx, toolbarHeightPx, drawerState, scope)
         Title(scroll, track.name, headerHeightPx, toolbarHeightPx)
-        CameraButton(scroll, headerHeightPx, toolbarHeightPx)
-        BurgerButton(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx)
+        /*CameraButton(scroll, headerHeightPx, toolbarHeightPx)
+        BurgerButton(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx)*/
+        DetailsButtons(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx)
     }
 }
 
@@ -146,11 +173,27 @@ fun Header(scroll: ScrollState, imageUrl: String, headerHeightPx: Float) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Toolbar(scroll: ScrollState, headerHeightPx: Float, toolbarHeightPx: Float, drawerState: DrawerState, scope: CoroutineScope) {
+private fun Toolbar(
+    scroll: ScrollState,
+    headerHeightPx: Float,
+    toolbarHeightPx: Float,
+    drawerState: DrawerState,
+    scope: CoroutineScope
+) {
     val toolbarBottom = headerHeightPx - toolbarHeightPx
     val showToolbar by remember {
         derivedStateOf { scroll.value >= toolbarBottom }
     }
+    val context = LocalContext.current
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                openCamera(context)
+            } else {
+                Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
+
     AnimatedVisibility(
         visible = showToolbar,
         enter = fadeIn(animationSpec = tween(300)),
@@ -173,6 +216,24 @@ private fun Toolbar(scroll: ScrollState, headerHeightPx: Float, toolbarHeightPx:
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
+                        contentDescription = "",
+                        tint = Color.White
+                    )
+                }
+            },
+            actions = {
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            launcher.launch(Manifest.permission.CAMERA)
+                        }
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
                         contentDescription = "",
                         tint = Color.White
                     )
@@ -255,14 +316,10 @@ fun Title(scroll: ScrollState, trackName: String, headerHeightPx: Float, toolbar
 }
 
 @Composable
-fun CameraButton(scroll: ScrollState, headerHeightPx: Float, toolbarHeightPx: Float) {
-    var titleHeightPx by remember { mutableFloatStateOf(0f) }
-    val titleHeightDp = with(LocalDensity.current) { titleHeightPx.toDp() }
-    val paddingMedium = 10.dp
-    val toolbarHeight = with(LocalDensity.current) { toolbarHeightPx.toDp() }
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    Log.d("width", screenWidth.toString())
-
+fun DetailsButtons(
+    scroll: ScrollState, drawerState: DrawerState, scope: CoroutineScope,
+    headerHeightPx: Float, toolbarHeightPx: Float
+) {
     val context = LocalContext.current
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -273,7 +330,6 @@ fun CameraButton(scroll: ScrollState, headerHeightPx: Float, toolbarHeightPx: Fl
             }
         }
 
-    val coroutineScope = rememberCoroutineScope()
     val collapseRange: Float = (headerHeightPx - toolbarHeightPx)
     val collapseFraction: Float = (scroll.value / collapseRange).coerceIn(0f, 1f)
     AnimatedVisibility(
@@ -283,30 +339,26 @@ fun CameraButton(scroll: ScrollState, headerHeightPx: Float, toolbarHeightPx: Fl
     ) {
         Box(
             modifier = Modifier
-                .graphicsLayer {
-                    val titleY = lerp(
-                        headerHeight - titleHeightDp - paddingMedium, // start Y
-                        toolbarHeight / 2 - titleHeightDp / 2, // end Y
-                        collapseFraction
-                    )
-
-                    val titleX = screenWidth - 100.dp
-
-                    translationY = titleY.toPx()
-                    translationX = titleX.toPx()
-                }
-                .onGloballyPositioned {
-                    titleHeightPx = it.size.height.toFloat()
-                })
-        {
+                .fillMaxSize()
+                .padding(10.dp)
+        ) {
             FloatingActionButton(
+                modifier = Modifier.align(Alignment.TopStart),
                 onClick = {
-                    coroutineScope.launch {
+                    scope.launch {
+                        drawerState.open()
+                    }
+                },
+            ) {
+                Icon(Icons.Filled.Menu, contentDescription = "Open menu")
+            }
+            FloatingActionButton(
+                modifier = Modifier.align(Alignment.TopEnd),
+                onClick = {
+                    scope.launch {
                         launcher.launch(Manifest.permission.CAMERA)
                     }
                 },
-                modifier = Modifier
-                    .padding(16.dp)
             ) {
                 Icon(
                     imageVector = Icons.Filled.CameraAlt,
@@ -315,6 +367,7 @@ fun CameraButton(scroll: ScrollState, headerHeightPx: Float, toolbarHeightPx: Fl
             }
         }
     }
+
 }
 
 fun openCamera(context: Context) {
@@ -322,29 +375,3 @@ fun openCamera(context: Context) {
     context.startActivity(intent)
 }
 
-@Composable
-fun BurgerButton(
-    scroll: ScrollState, drawerState: DrawerState, scope: CoroutineScope,
-    headerHeightPx: Float, toolbarHeightPx: Float) {
-
-    val collapseRange: Float = (headerHeightPx - toolbarHeightPx)
-    val collapseFraction: Float = (scroll.value / collapseRange).coerceIn(0f, 1f)
-
-    AnimatedVisibility(
-        visible = collapseFraction < 1f,
-        enter = fadeIn(),
-        exit = fadeOut()
-    ) {
-        FloatingActionButton(
-            onClick = {
-                scope.launch {
-                    drawerState.open()
-                }
-            },
-            modifier = Modifier
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Filled.Menu, contentDescription = "Open menu")
-        }
-    }
-}

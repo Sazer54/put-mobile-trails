@@ -4,8 +4,11 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Landscape
@@ -49,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -58,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -121,38 +129,37 @@ fun MyApp(tracksList: List<Track>) {
         }
     }
 }
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppNavigator(tracksList: List<Track>) {
     val navController = rememberNavController()
-    val selectedTrack = remember { mutableStateOf<Track?>(null) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = {4})
+    val trackViewModel : TrackViewModel = viewModel()
 
-    NavHost(navController = navController, startDestination = Screen.HomePage.route) {
-        composable(Screen.HomePage.route) {
-            HomePage(navController, drawerState, scope, selectedTrack.value)
-        }
-        composable(Screen.TrackListEasy.route) {
-            val newList = tracksList.filter { it.difficulty == 1 }
-            PhoneLayout(newList, navController, drawerState, scope, selectedTrack.value)
-        }
-        composable(Screen.TrackListHard.route) {
-            val newList = tracksList.filter { it.difficulty >=2 }
-            PhoneLayout(newList, navController, drawerState, scope, selectedTrack.value)
-        }
-        composable(Screen.TrackDetails.route) { backStackEntry ->
-            val trackName = backStackEntry.arguments?.getString("trackName")
-            val track = tracksList.find { it.name == trackName }
-            if (track != null) {
-                selectedTrack.value = track
-                TrackDetailsScreen(selectedTrack.value, navController, drawerState, scope)
-            } else {
-                // Handle the case where the track is not found
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            DrawerContent(
+                pagerState = pagerState,
+                drawerState = drawerState,
+                scope = scope,
+                selectedTrack = trackViewModel.selectedTrack
+            )
+        },
+        content = {
+            HorizontalPager(state = pagerState) { page ->
+                when (page) {
+                    0 -> HomePage(drawerState, scope)
+                    1 -> PhoneLayout(tracksList.filter { it.difficulty == 1 }, drawerState, scope, pagerState, trackViewModel, TrackDifficulty.EASY)
+                    2 -> PhoneLayout(tracksList.filter { it.difficulty >= 2 }, drawerState, scope, pagerState, trackViewModel, TrackDifficulty.HARD)
+                    3 -> TrackDetailsScreen(trackViewModel, navController, drawerState, scope)
+                }
             }
         }
-    }
+    )
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -184,74 +191,69 @@ fun TopBar(title: String, drawerState: DrawerState, scope: CoroutineScope) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PhoneLayout(
-    tracksList: List<Track>, navController: NavController,
-    drawerState: DrawerState, scope: CoroutineScope, selectedTrack: Track?) {
+    tracksList: List<Track>,
+    drawerState: DrawerState, scope: CoroutineScope, pagerState: PagerState, trackViewModel: TrackViewModel, trackDifficulty: TrackDifficulty) {
     var query = remember { mutableStateOf("") }
     var active = remember { mutableStateOf(false) }
     val filteredTracksList = tracksList.filter { track ->
         track.name.contains(query.value, ignoreCase = true)
     }
-    val title = if (navController.currentDestination?.route == Screen.TrackListEasy.route)
+    val title = if (trackDifficulty == TrackDifficulty.EASY)
         "Easy tracks" else "Hard tracks"
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = { DrawerContent(navController, drawerState, scope, selectedTrack) },
-        content = {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = { TopBar(title, drawerState, scope) },
+        content = {padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.Start
             ) {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    topBar = { TopBar(title, drawerState, scope) },
-                    content = {padding ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(padding),
-                            verticalArrangement = Arrangement.Top,
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            SearchBar(
-                                query = query.value,
-                                onQueryChange = { query.value = it },
-                                onSearch = {
-                                    active.value = false
-                                },
-                                active = true,
-                                onActiveChange = {
-                                    active.value = it
-                                },
-                                content = {
-                                    ListComponent(filteredTracksList) {
-                                        navController.navigate(Screen.TrackDetails.createRoute(it.name))
-                                    }
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = "Search tracks...",
-                                        style = TextStyle(
-                                            fontSize = 20.sp,
-                                            fontFamily = FontFamily.SansSerif,
-                                            color = Color.Gray
-                                        ),
-                                        textAlign = TextAlign.Left
-                                    )
-                                }
-                            )
+                SearchBar(
+                    query = query.value,
+                    onQueryChange = { query.value = it },
+                    onSearch = {
+                        active.value = false
+                    },
+                    active = true,
+                    onActiveChange = {
+                        active.value = it
+                    },
+                    content = {
+                        ListComponent(filteredTracksList) {
+                            trackViewModel.selectedTrack = it
+                            scope.launch {
+                                pagerState.animateScrollToPage(3)
+                            }
                         }
+                    },
+                    placeholder = {
+                        Text(
+                            text = "Search tracks...",
+                            style = TextStyle(
+                                fontSize = 20.sp,
+                                fontFamily = FontFamily.SansSerif,
+                                color = Color.Gray
+                            ),
+                            textAlign = TextAlign.Left
+                        )
                     }
                 )
             }
         }
     )
+
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DrawerContent(navController: NavController, drawerState: DrawerState, scope: CoroutineScope, selectedTrack: Track?) {
+fun DrawerContent(pagerState: PagerState, drawerState: DrawerState, scope: CoroutineScope, selectedTrack: Track?) {
     ModalDrawerSheet {
         Box {
             Image(
@@ -295,9 +297,13 @@ fun DrawerContent(navController: NavController, drawerState: DrawerState, scope:
                     Icon(Icons.Filled.Home, contentDescription = "Home")
                 },
                 label = { Text(text = "Home") },
-                selected = navController.currentDestination?.route == Screen.HomePage.route,
+                selected = pagerState.currentPage == 0,
                 onClick = {
-                    navController.navigate(Screen.HomePage.route)
+                    if (pagerState.currentPage != 0) {
+                        scope.launch {
+                            pagerState.animateScrollToPage(0)
+                        }
+                    }
                     if (drawerState.isOpen) scope.launch { drawerState.close() }
                 }
             )
@@ -306,9 +312,13 @@ fun DrawerContent(navController: NavController, drawerState: DrawerState, scope:
                     Icon(Icons.Filled.Landscape, contentDescription = "Menu")
                 },
                 label = { Text(text = "Easy tracks list") },
-                selected = navController.currentDestination?.route == Screen.TrackListEasy.route,
+                selected = pagerState.currentPage == 1,
                 onClick = {
-                    navController.navigate(Screen.TrackListEasy.route)
+                    if (pagerState.currentPage != 1) {
+                        scope.launch {
+                            pagerState.animateScrollToPage(1)
+                        }
+                    }
                     if (drawerState.isOpen) scope.launch { drawerState.close() }
                 }
             )
@@ -318,9 +328,13 @@ fun DrawerContent(navController: NavController, drawerState: DrawerState, scope:
                     Icon(Icons.Filled.Landscape, contentDescription = "Menu")
                 },
                 label = { Text(text = "Hard tracks list") },
-                selected = navController.currentDestination?.route == Screen.TrackListHard.route,
+                selected = pagerState.currentPage == 2,
                 onClick = {
-                    navController.navigate(Screen.TrackListHard.route)
+                    if (pagerState.currentPage != 2) {
+                        scope.launch {
+                            pagerState.animateScrollToPage(2)
+                        }
+                    }
                     if (drawerState.isOpen) scope.launch { drawerState.close() }
                 }
             )
@@ -330,12 +344,14 @@ fun DrawerContent(navController: NavController, drawerState: DrawerState, scope:
                     Icon(Icons.Filled.Star, contentDescription = "Menu")
                 },
                 label = { Text(text = "Your track") },
-                selected = navController.currentDestination?.route == Screen.TrackDetails.route,
+                selected = pagerState.currentPage == 3,
                 onClick = {
-                    selectedTrack?.let {
-                        navController.navigate(Screen.TrackDetails.createRoute(it.name))
-                        if (drawerState.isOpen) scope.launch { drawerState.close() }
+                    if (pagerState.currentPage != 3) {
+                        scope.launch {
+                            pagerState.animateScrollToPage(3)
+                        }
                     }
+                    if (drawerState.isOpen) scope.launch { drawerState.close() }
                 }
             )
         }
