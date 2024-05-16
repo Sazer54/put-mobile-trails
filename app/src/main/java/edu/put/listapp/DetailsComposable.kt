@@ -24,7 +24,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import edu.put.listapp.model.Loop
-import edu.put.listapp.model.Track
+import edu.put.listapp.database.Track
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 @Composable
 fun TrackDescription(
@@ -50,7 +53,7 @@ fun TrackDescription(
         ) {
             if (showStopwatch) {
                 Stopwatch(trackViewModel)
-                TrackRecords()
+                TrackRecords(trackViewModel)
             } else {
                 Text(
                     text = "Description:",
@@ -77,16 +80,16 @@ fun TrackDescription(
                     fontSize = 20.sp
                 )
                 var index = 1
-                track.loops.values.toList().forEach {
+                /*track.loops.values.toList().forEach {
                     ListItem(loop = it, index = index++)
-                }
+                }*/
             }
         }
     }
 }
 
 @Composable
-fun TrackRecords() {
+fun TrackRecords(trackViewModel: TrackViewModel) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Text(
             text = "Your track records:",
@@ -97,10 +100,42 @@ fun TrackRecords() {
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp
         )
-        Text(text = "2019-02-01 00:00:01")
-        Text(text = "2019-02-01 00:00:02")
-        Text(text = "2019-02-01 00:00:03")
+        val records = trackViewModel.selectedTrack.value!!.records
+        records.forEach {
+            val timestamp = getDateTimeComponents(it.timestamp)
+            val time = getDateTimeComponents(it.time)
+            Text(text =
+            "${time["hour"]}:${time["minute"]}:${time["second"]} @ " +
+                    "${timestamp["year"]}-${timestamp["month"]}-${timestamp["day"]} ${timestamp["hour"]}:${timestamp["minute"]}:${timestamp["second"]}"
+            )
+        }
     }
+}
+
+fun getDateTimeComponents(timestamp: Long): Map<String, Int> {
+    // Convert timestamp to Instant
+    val instant = Instant.ofEpochMilli(timestamp)
+
+    // Convert Instant to LocalDateTime using the system default time zone
+    val localDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
+
+    // Retrieve individual components
+    val year = localDateTime.year
+    val month = localDateTime.monthValue
+    val day = localDateTime.dayOfMonth
+    val hour = localDateTime.hour
+    val minute = localDateTime.minute
+    val second = localDateTime.second
+
+    // Return the components as a map
+    return mapOf(
+        "year" to year,
+        "month" to month,
+        "day" to day,
+        "hour" to hour,
+        "minute" to minute,
+        "second" to second
+    )
 }
 
 @Composable

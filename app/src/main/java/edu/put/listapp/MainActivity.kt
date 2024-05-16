@@ -7,8 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,8 +56,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.White
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -70,12 +66,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.room.Room
 import com.google.gson.Gson
-import edu.put.listapp.model.Track
+import edu.put.listapp.database.AppDatabase
+import edu.put.listapp.database.Record
+//import edu.put.listapp.model.Track
+import edu.put.listapp.database.Track
+import edu.put.listapp.database.TrackDetails
 import edu.put.listapp.ui.theme.ListAppTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -89,18 +87,42 @@ import okhttp3.Request
 import java.net.URLDecoder
 
 class MainActivity : ComponentActivity() {
-    private lateinit var tracksList: List<Track>
+    private lateinit var tracksList: List<TrackDetails>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val db = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java, "database-name"
+        ).build()
+        val dao = db.trackDao()
+
         CoroutineScope(Dispatchers.Main).launch {
-            tracksList = withContext(Dispatchers.IO) {
-                loadTracks()
+            val count = withContext(Dispatchers.IO) {
+                dao.count()
             }
+            Log.d("count", "$count")
+            if (count == 0) {
+                tracksList = withContext(Dispatchers.IO) {
+                    loadTracks()
+                }
+                withContext(Dispatchers.IO) {
+                    tracksList.forEach {
+                        dao.insertTrack(it.track)
+                        dao.insertRecord(Record(time = 1000, trackId = it.track.id, timestamp = System.currentTimeMillis()))
+                    }
+                }
+            } else {
+                tracksList = withContext(Dispatchers.IO) {
+                    dao.getTracksWithDetails()
+                }
+            }
+            Log.d("actual count", tracksList.size.toString())
+            Log.d("record", tracksList[0].records[0].time.toString())
 
             setContent {
                 ListAppTheme {
-                    MyApp(tracksList = tracksList)
+                    MyApp(tracksList = tracksList, db)
                 }
             }
         }
@@ -113,9 +135,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MyApp(tracksList: List<Track>) {
+fun MyApp(tracksList: List<TrackDetails>, db: AppDatabase) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
+
+
 
     Surface(
         modifier = Modifier
@@ -125,19 +149,18 @@ fun MyApp(tracksList: List<Track>) {
         if (isTablet) {
             var selectedTrack: Track? by remember { mutableStateOf(null) }
 
-            TabletLayout(tracksList = tracksList, selectedTrack = selectedTrack) {
+            /*TabletLayout(tracksList = tracksList, selectedTrack = selectedTrack) {
                 selectedTrack = it
-            }
+            }*/
         } else {
-            AppNavigator(tracksList)
+            AppNavigator(tracksList, db)
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppNavigator(tracksList: List<Track>) {
-    val navController = rememberNavController()
+fun AppNavigator(tracksList: List<TrackDetails>, db: AppDatabase) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 4 })
@@ -145,9 +168,11 @@ fun AppNavigator(tracksList: List<Track>) {
         derivedStateOf { pagerState.currentPage }
     }
     val trackViewModel: TrackViewModel = viewModel()
+    trackViewModel.trackDetailsList = tracksList
+    trackViewModel.db = db
 
-    val easyTracks = tracksList.filter { it.difficulty == 1 }
-    val hardTracks = tracksList.filter { it.difficulty >= 2 }
+    val easyTracks = tracksList.filter { it.track.difficulty == 1 }
+    val hardTracks = tracksList.filter { it.track.difficulty >= 2 }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -156,7 +181,7 @@ fun AppNavigator(tracksList: List<Track>) {
                 pagerState = pagerState,
                 drawerState = drawerState,
                 scope = scope,
-                selectedTrack = trackViewModel.selectedTrack
+                selectedTrack = trackViewModel.selectedTrack.value?.track
             )
         },
         content = {
@@ -258,7 +283,7 @@ fun TopBar(title: String, drawerState: DrawerState, scope: CoroutineScope) {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PhoneLayout(
-    tracksList: List<Track>,
+    tracksList: List<TrackDetails>,
     drawerState: DrawerState,
     scope: CoroutineScope,
     pagerState: PagerState,
@@ -268,7 +293,7 @@ fun PhoneLayout(
     var query = remember { mutableStateOf("") }
     var active = remember { mutableStateOf(false) }
     val filteredTracksList = tracksList.filter { track ->
-        track.name.contains(query.value, ignoreCase = true)
+        track.track.name.contains(query.value, ignoreCase = true)
     }
     val title = if (trackDifficulty == TrackDifficulty.EASY)
         "Easy tracks" else "Hard tracks"
@@ -296,9 +321,14 @@ fun PhoneLayout(
                     },
                     content = {
                         ListComponent(filteredTracksList) {
-                            trackViewModel.selectedTrack = it
-                            scope.launch {
-                                pagerState.animateScrollToPage(3)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val track = trackViewModel.db.trackDao().getTrackDetailsById(it.track.id)
+                                withContext(Dispatchers.Main) {
+                                    trackViewModel.selectedTrack.value = track
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(3)
+                                    }
+                                }
                             }
                         }
                     },
@@ -449,9 +479,9 @@ fun TabletLayout(tracksList: List<Track>, selectedTrack: Track?, onTrackSelected
                 ) {
                     TabletHeader()
                     Spacer(modifier = Modifier.height(16.dp))
-                    ListComponent(tracksList.toList()) {
+                    /*ListComponent(tracksList.toList()) {
                         onTrackSelected(it)
-                    }
+                    }*/
                 }
             }
             Spacer(
@@ -489,7 +519,7 @@ fun TabletLayout(tracksList: List<Track>, selectedTrack: Track?, onTrackSelected
 }
 
 
-private suspend fun loadTracks(): List<Track> {
+private suspend fun loadTracks(): List<TrackDetails> {
     val apiUrlStub = "https://prescriptiontrails.org/api/trail/?id="
     val client = OkHttpClient()
     val gson = Gson()
@@ -524,7 +554,10 @@ private suspend fun loadTracks(): List<Track> {
             }
         }
     }
-    return tracksList
+    val tracksDetailsList = tracksList.map {
+        TrackDetails(it, emptyList())
+    }
+    return tracksDetailsList
 }
 
 @Composable

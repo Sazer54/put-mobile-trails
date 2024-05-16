@@ -34,18 +34,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import edu.put.listapp.model.Track
+import edu.put.listapp.database.Track
+import edu.put.listapp.database.TrackDetails
 
 @Composable
-fun ListComponent(tracksList: List<Track>, onItemClick: (Track) -> Unit) {
+fun ListComponent(tracksList: List<TrackDetails>, onItemClick: (TrackDetails) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(count = 2),
         modifier = Modifier.padding(horizontal = 8.dp)
     ) {
         items(tracksList) {
             ListItem(
-                name = it.name,
-                thumbUrl = it.thumbURL,
+                name = it.track.name,
+                thumbUrl = it.track.thumbURL,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(5.dp)

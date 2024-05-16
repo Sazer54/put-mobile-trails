@@ -65,7 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import edu.put.listapp.model.Track
+import edu.put.listapp.database.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.pow
@@ -81,9 +81,9 @@ fun TrackDetailsScreen(
 ) {
     val scrollState = rememberScrollState(0)
     Box {
-        if (trackViewModel.selectedTrack != null) {
+        if (trackViewModel.selectedTrack.value != null) {
             AwesomeToolbar(
-                trackViewModel.selectedTrack!!,
+                trackViewModel.selectedTrack.value!!.track,
                 scrollState,
                 drawerState,
                 scope,
@@ -207,7 +207,7 @@ private fun Toolbar(
             }
         }
     val titleFontSize by remember {
-        derivedStateOf { if (trackViewModel.selectedTrack!!.name.length > 16) 18.sp else 26.sp }
+        derivedStateOf { if (trackViewModel.selectedTrack.value!!.track.name.length > 16) 18.sp else 26.sp }
     }
 
     AnimatedVisibility(
@@ -271,7 +271,7 @@ private fun Toolbar(
             },
             title = {
                 Text(
-                    text = trackViewModel.selectedTrack!!.name,
+                    text = trackViewModel.selectedTrack.value!!.track.name,
                     modifier = Modifier
                         .padding(16.dp),
                     color = Color.White,

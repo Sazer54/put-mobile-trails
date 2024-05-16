@@ -1,8 +1,8 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
+    id("kotlin-kapt")
 }
-
 android {
     namespace = "edu.put.listapp"
     compileSdk = 34
@@ -48,7 +48,6 @@ android {
         }
     }
 }
-
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -77,5 +76,7 @@ dependencies {
     implementation("androidx.camera:camera-view:1.1.0")
     implementation("me.onebone:toolbar-compose:2.3.5")
     implementation("androidx.navigation:navigation-compose:2.7.7")
-
+    implementation("androidx.room:room-runtime:2.4.3")
+    kapt("androidx.room:room-compiler:2.4.3")
+    implementation("androidx.room:room-ktx:2.4.3")
 }
