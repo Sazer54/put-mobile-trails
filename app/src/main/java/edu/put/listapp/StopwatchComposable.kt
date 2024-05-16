@@ -1,9 +1,13 @@
 package edu.put.listapp
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,124 +44,127 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-class StopwatchState(private val trackName: String, viewModel: StopwatchViewModel) {
-    private val viewModel = viewModel
-    private var job: Job? = null
-    var isRunning by mutableStateOf(false)
-    var elapsedMiliseconds by mutableLongStateOf(0L)
-
-    fun startStopwatch() {
-        isRunning = true
-        job = CoroutineScope(Dispatchers.Main).launch {
-            while (isRunning) {
-                delay(1000L)
-                viewModel.updateTime(trackName, elapsedMiliseconds + 1000)
-                elapsedMiliseconds = viewModel.getElapsedTime(trackName)
-            }
-        }
-    }
-
-    fun stopStopwatch() {
-        isRunning = false
-        job?.cancel()
-    }
-
-    fun resetStopwatch() {
-        viewModel.updateTime(trackName, 0L)
-        this.elapsedMiliseconds = 0L
-        job?.cancel()
-        isRunning = false
-    }
-
-    fun formatTime(): String {
-        val seconds = elapsedMiliseconds / 1000
-        val minutes = seconds / 60
-        val remainingSeconds = seconds % 60
-        val remainingMilliseconds = elapsedMiliseconds % 1000
-        return String.format("%02d:%02d.%03d", minutes, remainingSeconds, remainingMilliseconds)
-    }
-}
+import java.time.format.TextStyle
 
 @Composable
-fun Stopwatch(stopwatchState: StopwatchState) {
+fun Stopwatch(trackViewModel: TrackViewModel) {
     Box(
         modifier = Modifier.padding(20.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.LightGray)
-                .padding(8.dp),
-            contentAlignment = Alignment.Center
-        ){
-            Row(
-                modifier = Modifier.wrapContentSize(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+        Column() {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.LightGray)
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 5.dp)
-                        .background(Color.White, shape = CircleShape)
+                Row(
+                    modifier = Modifier.wrapContentSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            if(!stopwatchState.isRunning) {
-                                stopwatchState.startStopwatch()
-                            } else {
-                                stopwatchState.stopStopwatch()
-                            }
-                        },
+                    Box(
                         modifier = Modifier
-                            .size(50.dp),
-                        shape = CircleShape,
-                        border = BorderStroke(2.dp, Color.Black),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor =  Color.Black // Color of the content (icon)
-                        )
+                            .padding(horizontal = 5.dp)
+                            .background(Color.White, shape = CircleShape)
                     ) {
-                        if (stopwatchState.isRunning) {
-                            Icon(Icons.Filled.Pause, contentDescription = "Play", modifier = Modifier.padding(2.dp))
-                        } else {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = "Play", modifier = Modifier.padding(2.dp))
+                        OutlinedButton(
+                            onClick = {
+                                if (!trackViewModel.isRunning) {
+                                    trackViewModel.startStopwatch()
+                                } else {
+                                    trackViewModel.stopStopwatch()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(50.dp),
+                            shape = CircleShape,
+                            border = BorderStroke(2.dp, Color.Black),
+                            contentPadding = PaddingValues(0.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.Black // Color of the content (icon)
+                            )
+                        ) {
+                            if (trackViewModel.isRunning) {
+                                Icon(
+                                    Icons.Filled.Pause,
+                                    contentDescription = "Play",
+                                    modifier = Modifier.padding(2.dp)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.PlayArrow,
+                                    contentDescription = "Play",
+                                    modifier = Modifier.padding(2.dp)
+                                )
+                            }
                         }
                     }
-                }
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 5.dp)
-                        .background(Color.White, shape = CircleShape)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            stopwatchState.resetStopwatch()
-                        },
+                    Box(
                         modifier = Modifier
-                            .size(50.dp),
-                        shape = CircleShape,
-                        border = BorderStroke(2.dp, Color.Black),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor =  Color.Black // Color of the content (icon)
-                        )
+                            .padding(horizontal = 5.dp)
+                            .background(Color.White, shape = CircleShape)
                     ) {
-                        Icon(Icons.Filled.Stop, contentDescription = "Play", modifier = Modifier.padding(2.dp))
+                        OutlinedButton(
+                            onClick = {
+                                trackViewModel.resetStopwatch()
+                            },
+                            modifier = Modifier
+                                .size(50.dp),
+                            shape = CircleShape,
+                            border = BorderStroke(2.dp, Color.Black),
+                            contentPadding = PaddingValues(0.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.Black // Color of the content (icon)
+                            )
+                        ) {
+                            Icon(
+                                Icons.Filled.Stop,
+                                contentDescription = "Play",
+                                modifier = Modifier.padding(2.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = trackViewModel.formatTime(),
+                        modifier = Modifier.padding(8.dp), // Adjust padding as needed
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 40.sp,
+                        lineHeight = 40.sp
+                    )
+                }
+            }
+            AnimatedVisibility(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                visible = trackViewModel.stopwatchTrack.value != null,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                trackViewModel.stopwatchTrack.value?.let { track ->
+                    Column(
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(10.dp)
+                    ) {
+                        Text(
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            text = "Currently running for",
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            text = track.name,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp
+                        )
                     }
                 }
-
-                Text(
-                    text = stopwatchState.formatTime(),
-                    modifier = Modifier.padding(8.dp), // Adjust padding as needed
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 40.sp,
-                    lineHeight = 40.sp
-                )
             }
         }
     }
-
 }

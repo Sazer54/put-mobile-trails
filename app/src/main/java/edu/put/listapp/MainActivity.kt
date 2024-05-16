@@ -41,11 +41,14 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.White
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -129,14 +133,21 @@ fun MyApp(tracksList: List<Track>) {
         }
     }
 }
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppNavigator(tracksList: List<Track>) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = {4})
-    val trackViewModel : TrackViewModel = viewModel()
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 4 })
+    val selectedTabIndex = remember {
+        derivedStateOf { pagerState.currentPage }
+    }
+    val trackViewModel: TrackViewModel = viewModel()
+
+    val easyTracks = tracksList.filter { it.difficulty == 1 }
+    val hardTracks = tracksList.filter { it.difficulty >= 2 }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -149,12 +160,65 @@ fun AppNavigator(tracksList: List<Track>) {
             )
         },
         content = {
-            HorizontalPager(state = pagerState) { page ->
-                when (page) {
-                    0 -> HomePage(drawerState, scope)
-                    1 -> PhoneLayout(tracksList.filter { it.difficulty == 1 }, drawerState, scope, pagerState, trackViewModel, TrackDifficulty.EASY)
-                    2 -> PhoneLayout(tracksList.filter { it.difficulty >= 2 }, drawerState, scope, pagerState, trackViewModel, TrackDifficulty.HARD)
-                    3 -> TrackDetailsScreen(trackViewModel, navController, drawerState, scope)
+            Scaffold(
+                bottomBar = {
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex.value,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HomeTabs.entries.forEachIndexed() { index, tab ->
+                            Tab(
+                                selected = selectedTabIndex.value == index,
+                                selectedContentColor = MaterialTheme.colorScheme.primary,
+                                unselectedContentColor = MaterialTheme.colorScheme.outline,
+                                onClick = {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(tab.ordinal)
+                                    }
+                                },
+                                text = {Text(text = tab.text)},
+                                icon = {
+                                    Icon(
+                                        imageVector = if (selectedTabIndex.value == index)
+                                            tab.selectedIcon else tab.unselectedIcon,
+                                        contentDescription = tab.text
+                                    )
+                                }
+
+                            )
+                        }
+                    }
+                }
+            ) { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    HorizontalPager(state = pagerState) { page ->
+                        when (page) {
+                            0 -> HomePage(drawerState, scope)
+                            1 -> PhoneLayout(
+                                easyTracks,
+                                drawerState,
+                                scope,
+                                pagerState,
+                                trackViewModel,
+                                TrackDifficulty.EASY
+                            )
+
+                            2 -> PhoneLayout(
+                                hardTracks,
+                                drawerState,
+                                scope,
+                                pagerState,
+                                trackViewModel,
+                                TrackDifficulty.HARD
+                            )
+
+                            3 -> TrackDetailsScreen(
+                                trackViewModel,
+                                drawerState,
+                                scope
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -195,7 +259,12 @@ fun TopBar(title: String, drawerState: DrawerState, scope: CoroutineScope) {
 @Composable
 fun PhoneLayout(
     tracksList: List<Track>,
-    drawerState: DrawerState, scope: CoroutineScope, pagerState: PagerState, trackViewModel: TrackViewModel, trackDifficulty: TrackDifficulty) {
+    drawerState: DrawerState,
+    scope: CoroutineScope,
+    pagerState: PagerState,
+    trackViewModel: TrackViewModel,
+    trackDifficulty: TrackDifficulty
+) {
     var query = remember { mutableStateOf("") }
     var active = remember { mutableStateOf(false) }
     val filteredTracksList = tracksList.filter { track ->
@@ -207,7 +276,7 @@ fun PhoneLayout(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = { TopBar(title, drawerState, scope) },
-        content = {padding ->
+        content = { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -245,6 +314,7 @@ fun PhoneLayout(
                         )
                     }
                 )
+
             }
         }
     )
@@ -253,7 +323,12 @@ fun PhoneLayout(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DrawerContent(pagerState: PagerState, drawerState: DrawerState, scope: CoroutineScope, selectedTrack: Track?) {
+fun DrawerContent(
+    pagerState: PagerState,
+    drawerState: DrawerState,
+    scope: CoroutineScope,
+    selectedTrack: Track?
+) {
     ModalDrawerSheet {
         Box {
             Image(
@@ -423,7 +498,7 @@ private suspend fun loadTracks(): List<Track> {
     coroutineScope {
         val deferredList = mutableListOf<Deferred<Track?>>()
 
-        for(i in 1..10) {
+        for (i in 1..10) {
             val deferred = async {
                 val url = apiUrlStub + i.toString()
                 val request = Request.Builder()

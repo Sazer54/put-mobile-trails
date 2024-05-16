@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -15,6 +17,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Landscape
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -37,9 +41,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,7 +64,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import edu.put.listapp.model.Track
 import kotlinx.coroutines.CoroutineScope
@@ -71,14 +76,19 @@ private val headerHeight = 275.dp
 @Composable
 fun TrackDetailsScreen(
     trackViewModel: TrackViewModel,
-    navController: NavController,
     drawerState: DrawerState,
     scope: CoroutineScope,
 ) {
     val scrollState = rememberScrollState(0)
     Box {
         if (trackViewModel.selectedTrack != null) {
-            AwesomeToolbar(trackViewModel.selectedTrack!!, scrollState, drawerState, scope)
+            AwesomeToolbar(
+                trackViewModel.selectedTrack!!,
+                scrollState,
+                drawerState,
+                scope,
+                trackViewModel
+            )
         } else {
             ChooseTrackInfo(drawerState, scope)
         }
@@ -88,7 +98,7 @@ fun TrackDetailsScreen(
 @Composable
 fun ChooseTrackInfo(drawerState: DrawerState, scope: CoroutineScope) {
     Scaffold(
-        topBar = { TopBar(title = "Track details", drawerState = drawerState, scope = scope)},
+        topBar = { TopBar(title = "Track details", drawerState = drawerState, scope = scope) },
         content = { padding ->
             Box(
                 modifier = Modifier
@@ -128,18 +138,19 @@ fun AwesomeToolbar(
     track: Track,
     scroll: ScrollState,
     drawerState: DrawerState,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    trackViewModel: TrackViewModel
 ) {
     val headerHeightPx = with(LocalDensity.current) { headerHeight.toPx() }
     val toolbarHeightPx = with(LocalDensity.current) { 64.dp.toPx() }
+    val showStopwatch = remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Header(scroll, track.largeImgURL, headerHeightPx)
-        Details(track, scroll, headerHeight)
-        Toolbar(scroll, headerHeightPx, toolbarHeightPx, drawerState, scope)
+        TrackDescription(track, scroll, headerHeight, showStopwatch.value, trackViewModel)
+        Toolbar(scroll, headerHeightPx, toolbarHeightPx, drawerState, scope, showStopwatch, trackViewModel)
         Title(scroll, track.name, headerHeightPx, toolbarHeightPx)
-        /*CameraButton(scroll, headerHeightPx, toolbarHeightPx)
-        BurgerButton(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx)*/
-        DetailsButtons(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx)
+        DetailsButtons(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx, showStopwatch)
     }
 }
 
@@ -178,7 +189,9 @@ private fun Toolbar(
     headerHeightPx: Float,
     toolbarHeightPx: Float,
     drawerState: DrawerState,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    showStopwatch: MutableState<Boolean>,
+    trackViewModel: TrackViewModel
 ) {
     val toolbarBottom = headerHeightPx - toolbarHeightPx
     val showToolbar by remember {
@@ -193,6 +206,9 @@ private fun Toolbar(
                 Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
             }
         }
+    val titleFontSize by remember {
+        derivedStateOf { if (trackViewModel.selectedTrack!!.name.length > 16) 18.sp else 26.sp }
+    }
 
     AnimatedVisibility(
         visible = showToolbar,
@@ -224,12 +240,26 @@ private fun Toolbar(
             actions = {
                 IconButton(
                     onClick = {
+                        showStopwatch.value = !showStopwatch.value
+                    },
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = "",
+                        tint = Color.White
+                    )
+                }
+                IconButton(
+                    onClick = {
                         scope.launch {
                             launcher.launch(Manifest.permission.CAMERA)
                         }
                     },
                     modifier = Modifier
-                        .padding(horizontal = 16.dp)
+                        .padding(end = 16.dp)
                         .size(36.dp)
                 ) {
                     Icon(
@@ -239,7 +269,18 @@ private fun Toolbar(
                     )
                 }
             },
-            title = {},
+            title = {
+                Text(
+                    text = trackViewModel.selectedTrack!!.name,
+                    modifier = Modifier
+                        .padding(16.dp),
+                    color = Color.White,
+                    style = TextStyle(
+                        fontSize = titleFontSize,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            },
         )
     }
 }
@@ -266,59 +307,66 @@ fun Title(scroll: ScrollState, trackName: String, headerHeightPx: Float, toolbar
         collapseFraction
     )
 
-    Box(
-        modifier = Modifier
-            .graphicsLayer {
-                val titleY: Float = (1f - collapseFraction).pow(2) *
-                        (headerHeightPx - titleHeightPx - paddingPx) +
-                        2 * collapseFraction * (1 - collapseFraction) * headerHeightPx / 2 +
-                        collapseFraction.pow(2) * (toolbarHeightPx / 2 - titleHeightPx / 2)
-
-                val titleX: Float =
-                    (1f - collapseFraction).pow(2) * (titlePaddingStartPx) +
-                            2 * collapseFraction * (1 - collapseFraction) * titlePaddingEndPx *
-                            5 / 4 + collapseFraction.pow(2) * titlePaddingEndPx
-
-                translationY = titleY
-                translationX = titleX
-                scaleX = scaleXY.value
-                scaleY = scaleXY.value
-            }
-            .onGloballyPositioned {
-                titleHeightPx = it.size.height.toFloat()
-            }
+    AnimatedVisibility(
+        visible = collapseFraction < 1f,
+        enter = fadeIn(),
+        exit = fadeOut()
     ) {
-        Text(
-            text = trackName,
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .align(Alignment.BottomStart)
-                .offset(x = 2.dp, y = 2.dp)
-                .alpha(0.75f),
-            color = Color.DarkGray,
-            style = TextStyle(
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Bold
+                .graphicsLayer {
+                    val titleY: Float = (1f - collapseFraction).pow(2) *
+                            (headerHeightPx - titleHeightPx - paddingPx) +
+                            2 * collapseFraction * (1 - collapseFraction) * headerHeightPx / 2 +
+                            collapseFraction.pow(2) * (toolbarHeightPx / 2 - titleHeightPx / 2)
+
+                    val titleX: Float =
+                        (1f - collapseFraction).pow(2) * (titlePaddingStartPx) +
+                                2 * collapseFraction * (1 - collapseFraction) * titlePaddingEndPx *
+                                5 / 4 + collapseFraction.pow(2) * titlePaddingEndPx
+
+                    translationY = titleY
+                    translationX = titleX
+                    scaleX = scaleXY.value
+                    scaleY = scaleXY.value
+                }
+                .onGloballyPositioned {
+                    titleHeightPx = it.size.height.toFloat()
+                }
+        ) {
+            Text(
+                text = trackName,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = 2.dp, y = 2.dp)
+                    .alpha(0.75f),
+                color = Color.DarkGray,
+                style = TextStyle(
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
-        Text(
-            text = trackName,
-            modifier = Modifier
-                .padding(16.dp)
-                .align(Alignment.BottomStart),
-            color = Color.White,
-            style = TextStyle(
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Bold
+            Text(
+                text = trackName,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.BottomStart),
+                color = Color.White,
+                style = TextStyle(
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
+        }
     }
+
 }
 
 @Composable
 fun DetailsButtons(
     scroll: ScrollState, drawerState: DrawerState, scope: CoroutineScope,
-    headerHeightPx: Float, toolbarHeightPx: Float
+    headerHeightPx: Float, toolbarHeightPx: Float, showStopwatch: MutableState<Boolean>
 ) {
     val context = LocalContext.current
     val launcher =
@@ -352,22 +400,44 @@ fun DetailsButtons(
             ) {
                 Icon(Icons.Filled.Menu, contentDescription = "Open menu")
             }
-            FloatingActionButton(
+            DetailsActionButtons(
                 modifier = Modifier.align(Alignment.TopEnd),
-                onClick = {
-                    scope.launch {
-                        launcher.launch(Manifest.permission.CAMERA)
-                    }
-                },
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.CameraAlt,
-                    contentDescription = "Open Camera"
-                )
-            }
+                scope = scope,
+                launcher = launcher,
+                showStopwatch = showStopwatch
+            )
         }
     }
+}
 
+@Composable
+fun DetailsActionButtons(
+    modifier: Modifier,
+    scope: CoroutineScope,
+    launcher: ManagedActivityResultLauncher<String, Boolean>,
+    showStopwatch: MutableState<Boolean>
+) {
+    Row(modifier = modifier) {
+        FloatingActionButton(onClick = { showStopwatch.value = !showStopwatch.value }) {
+            Icon(
+                imageVector = Icons.Filled.Timer,
+                contentDescription = "Show stopwatch"
+            )
+        }
+        FloatingActionButton(
+            modifier = Modifier.padding(start = 10.dp),
+            onClick = {
+                scope.launch {
+                    launcher.launch(Manifest.permission.CAMERA)
+                }
+            },
+        ) {
+            Icon(
+                imageVector = Icons.Filled.CameraAlt,
+                contentDescription = "Open Camera"
+            )
+        }
+    }
 }
 
 fun openCamera(context: Context) {
