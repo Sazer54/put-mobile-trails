@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Track::class, Record::class], version = 2)
+@Database(entities = [Track::class, Record::class, Loop::class, Image::class], version = 4)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun trackDao(): TrackDao
 

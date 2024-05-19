@@ -1,12 +1,13 @@
 package edu.put.listapp.database
 
+import android.net.Uri
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "record",
+    tableName = "image",
     foreignKeys = [ForeignKey(
         entity = Track::class,
         parentColumns = ["id"],
@@ -15,10 +16,8 @@ import androidx.room.PrimaryKey
     )],
     indices = [Index(value = ["trackId"])]
 )
-data class Record(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val time: Long, // Example field for the recorded time
-    val trackId: Long, // Foreign key reference to Track
-    val timestamp: Long,
+data class Image(
+    @PrimaryKey(autoGenerate = true) val id : Long = 0,
+    val trackId: Long,
+    val uri: String,
 )
-

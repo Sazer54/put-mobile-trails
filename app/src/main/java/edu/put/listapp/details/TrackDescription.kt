@@ -1,5 +1,6 @@
-package edu.put.listapp
+package edu.put.listapp.details
 
+import android.net.Uri
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -22,24 +23,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import edu.put.listapp.model.Loop
-import edu.put.listapp.database.Track
+import edu.put.listapp.Stopwatch
+import edu.put.listapp.viewmodel.TrackViewModel
+import edu.put.listapp.database.Loop
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
 @Composable
 fun TrackDescription(
-    track: Track,
     scrollState: ScrollState,
     headerHeight: Dp,
-    showStopwatch: Boolean,
+    showStopwatch: MutableState<Boolean>,
     trackViewModel: TrackViewModel
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.Start
@@ -47,14 +47,23 @@ fun TrackDescription(
         Spacer(Modifier.height(headerHeight))
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .height(LocalConfiguration.current.screenHeightDp.dp)
                 .background(color = MaterialTheme.colorScheme.background)
         ) {
-            if (showStopwatch) {
+            if (showStopwatch.value) {
                 Stopwatch(trackViewModel)
                 TrackRecords(trackViewModel)
             } else {
+                if (trackViewModel.selectedTrack.value!!.images.isNotEmpty()) {
+                    Text(
+                        text = "Gallery:",
+                        modifier = Modifier.padding(top = 20.dp, start = 20.dp),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                    ImageGridScreen(uriList = trackViewModel.selectedTrack.value!!.images.map { Uri.parse(it.uri) })
+                }
                 Text(
                     text = "Description:",
                     modifier = Modifier.padding(top = 20.dp, bottom = 10.dp, start = 20.dp),
@@ -62,7 +71,7 @@ fun TrackDescription(
                     fontSize = 20.sp
                 )
                 Text(
-                    text = track.desc,
+                    text = trackViewModel.selectedTrack.value!!.track.desc,
                     modifier = Modifier
                         .padding(horizontal = 20.dp, vertical = 10.dp)
                         .fillMaxWidth(),
@@ -80,9 +89,9 @@ fun TrackDescription(
                     fontSize = 20.sp
                 )
                 var index = 1
-                /*track.loops.values.toList().forEach {
+                trackViewModel.selectedTrack.value?.loops?.toList()?.forEach {
                     ListItem(loop = it, index = index++)
-                }*/
+                }
             }
         }
     }
@@ -104,11 +113,31 @@ fun TrackRecords(trackViewModel: TrackViewModel) {
         records.forEach {
             val timestamp = getDateTimeComponents(it.timestamp)
             val time = getDateTimeComponents(it.time)
-            Text(text =
-            "${time["hour"]}:${time["minute"]}:${time["second"]} @ " +
-                    "${timestamp["year"]}-${timestamp["month"]}-${timestamp["day"]} ${timestamp["hour"]}:${timestamp["minute"]}:${timestamp["second"]}"
+
+            // Format time components to ensure double digits
+            val formattedTime = String.format(
+                "%02d:%02d:%02d",
+                time["hour"] ?: 0,
+                time["minute"] ?: 0,
+                time["second"] ?: 0
+            )
+
+            // Format timestamp components to ensure double digits
+            val formattedTimestamp = String.format(
+                "%04d-%02d-%02d %02d:%02d:%02d",
+                timestamp["year"] ?: 0,
+                timestamp["month"] ?: 0,
+                timestamp["day"] ?: 0,
+                timestamp["hour"] ?: 0,
+                timestamp["minute"] ?: 0,
+                timestamp["second"] ?: 0
+            )
+
+            Text(
+                text = "$formattedTime @ $formattedTimestamp"
             )
         }
+
     }
 }
 

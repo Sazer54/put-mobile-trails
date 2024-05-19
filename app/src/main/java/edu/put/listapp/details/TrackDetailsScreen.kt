@@ -1,13 +1,12 @@
-package edu.put.listapp
+package edu.put.listapp.details
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
-import android.provider.MediaStore
+import android.icu.text.SimpleDateFormat
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -17,7 +16,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,7 +31,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,10 +62,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
-import edu.put.listapp.database.Track
+import edu.put.listapp.BuildConfig
+import edu.put.listapp.TopBar
+import edu.put.listapp.viewmodel.TrackViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import edu.put.listapp.database.Image
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Date
+import java.util.Objects
 import kotlin.math.pow
 
 
@@ -79,12 +86,9 @@ fun TrackDetailsScreen(
     drawerState: DrawerState,
     scope: CoroutineScope,
 ) {
-    val scrollState = rememberScrollState(0)
     Box {
         if (trackViewModel.selectedTrack.value != null) {
-            AwesomeToolbar(
-                trackViewModel.selectedTrack.value!!.track,
-                scrollState,
+            TrackDetailsLayout(
                 drawerState,
                 scope,
                 trackViewModel
@@ -98,64 +102,148 @@ fun TrackDetailsScreen(
 @Composable
 fun ChooseTrackInfo(drawerState: DrawerState, scope: CoroutineScope) {
     Scaffold(
-        topBar = { TopBar(title = "Track details", drawerState = drawerState, scope = scope) },
+        topBar = {
+            TopBar(
+                title = "Track details",
+                drawerState = drawerState,
+                scope = scope,
+                null
+            )
+        },
         content = { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color = MaterialTheme.colorScheme.background)
-                    .padding(padding)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.Center)
-                        .padding(20.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Landscape,
-                        contentDescription = "Menu",
-                        modifier = Modifier
-                            .size(100.dp)
-                            .align(Alignment.CenterHorizontally)
-                    )
-                    Text(
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        ),
-                        text = "Pick a track from the lists to see its details!",
-                    )
-                }
-            }
+            ChooseTrackInfoContent(padding = padding)
         }
     )
 }
 
 @Composable
-fun AwesomeToolbar(
-    track: Track,
-    scroll: ScrollState,
-    drawerState: DrawerState,
+fun ChooseTrackInfoContent(padding: PaddingValues?) {
+    Box(
+        modifier = if (padding != null) Modifier
+            .fillMaxSize()
+            .background(color = MaterialTheme.colorScheme.background)
+            .padding(padding) else Modifier
+            .fillMaxSize()
+            .background(color = MaterialTheme.colorScheme.background)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center)
+                .padding(20.dp),
+        ) {
+            Icon(
+                Icons.Filled.Landscape,
+                contentDescription = "Menu",
+                modifier = Modifier
+                    .size(100.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
+            Text(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(20.dp),
+                style = TextStyle(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                ),
+                text = "Pick a track from the lists to see its details!",
+            )
+        }
+    }
+}
+
+fun Context.createImageFile(): File {
+    // Create an image file name
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
+    val imageFileName = "JPEG_" + timeStamp + "_"
+    val image = File.createTempFile(
+        imageFileName, /* prefix */
+        ".jpg", /* suffix */
+        externalCacheDir      /* directory */
+    )
+    return image
+}
+@Composable
+fun TrackDetailsLayout(
+    drawerState: DrawerState?,
     scope: CoroutineScope,
     trackViewModel: TrackViewModel
 ) {
+    val scroll = rememberScrollState()
     val headerHeightPx = with(LocalDensity.current) { headerHeight.toPx() }
     val toolbarHeightPx = with(LocalDensity.current) { 64.dp.toPx() }
     val showStopwatch = remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    val file = context.createImageFile()
+    val uri = FileProvider.getUriForFile(
+        Objects.requireNonNull(context),
+        BuildConfig.APPLICATION_ID + ".provider", file
+    )
+    var capturedImageUri by remember {
+        mutableStateOf<Uri>(Uri.EMPTY)
+    }
+
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) {
+                capturedImageUri = uri
+                val image = Image(
+                    trackId = trackViewModel.selectedTrack.value!!.track.id,
+                    uri = capturedImageUri.toString()
+                )
+                CoroutineScope(Dispatchers.IO).launch {
+                    trackViewModel.db.trackDao().insertImage(image)
+                    val updatedTrackDetails =
+                        trackViewModel.db.trackDao().getTrackDetailsById(image.trackId)
+                    withContext(Dispatchers.Main) {
+                        trackViewModel.selectedTrack.value = updatedTrackDetails
+                    }
+                }
+            }
+        }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Header(scroll, track.largeImgURL, headerHeightPx)
-        TrackDescription(track, scroll, headerHeight, showStopwatch.value, trackViewModel)
-        Toolbar(scroll, headerHeightPx, toolbarHeightPx, drawerState, scope, showStopwatch, trackViewModel)
-        Title(scroll, track.name, headerHeightPx, toolbarHeightPx)
-        DetailsButtons(scroll, drawerState, scope, headerHeightPx, toolbarHeightPx, showStopwatch)
+        Header(scroll, trackViewModel, headerHeightPx)
+        TrackDescription(scroll, headerHeight, showStopwatch, trackViewModel)
+        Toolbar(
+            scroll,
+            headerHeightPx,
+            toolbarHeightPx,
+            drawerState,
+            scope,
+            showStopwatch,
+            trackViewModel,
+            cameraLauncher,
+            uri,
+            context
+        )
+        Title(
+            scroll,
+            trackViewModel.selectedTrack.value!!.track.name,
+            headerHeightPx,
+            toolbarHeightPx
+        )
+        DetailsButtons(
+            scroll,
+            drawerState,
+            scope,
+            headerHeightPx,
+            toolbarHeightPx,
+            showStopwatch,
+            cameraLauncher,
+            uri,
+            context
+        )
     }
 }
 
+
+
 @Composable
-fun Header(scroll: ScrollState, imageUrl: String, headerHeightPx: Float) {
+fun Header(scroll: ScrollState, trackViewModel: TrackViewModel, headerHeightPx: Float) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -165,9 +253,10 @@ fun Header(scroll: ScrollState, imageUrl: String, headerHeightPx: Float) {
             },
     ) {
         AsyncImage(
-            model = imageUrl,
+            model = trackViewModel.selectedTrack.value!!.track.largeImgURL,
             contentDescription = null,
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier.fillMaxSize()
         )
         Box(
             Modifier
@@ -188,20 +277,22 @@ private fun Toolbar(
     scroll: ScrollState,
     headerHeightPx: Float,
     toolbarHeightPx: Float,
-    drawerState: DrawerState,
+    drawerState: DrawerState?,
     scope: CoroutineScope,
     showStopwatch: MutableState<Boolean>,
-    trackViewModel: TrackViewModel
+    trackViewModel: TrackViewModel,
+    cameraLauncher: ManagedActivityResultLauncher<Uri, Boolean>,
+    uri: Uri,
+    context: Context
 ) {
     val toolbarBottom = headerHeightPx - toolbarHeightPx
     val showToolbar by remember {
         derivedStateOf { scroll.value >= toolbarBottom }
     }
-    val context = LocalContext.current
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                openCamera(context)
+                cameraLauncher.launch(uri)
             } else {
                 Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
             }
@@ -220,21 +311,23 @@ private fun Toolbar(
                 containerColor = MaterialTheme.colorScheme.primary // Replace with your desired color
             ),
             navigationIcon = {
-                IconButton(
-                    onClick = {
-                        scope.launch {
-                            drawerState.open()
-                        }
-                    },
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "",
-                        tint = Color.White
-                    )
+                if (drawerState != null) {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                drawerState.open()
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "",
+                            tint = Color.White
+                        )
+                    }
                 }
             },
             actions = {
@@ -360,88 +453,4 @@ fun Title(scroll: ScrollState, trackName: String, headerHeightPx: Float, toolbar
             )
         }
     }
-
 }
-
-@Composable
-fun DetailsButtons(
-    scroll: ScrollState, drawerState: DrawerState, scope: CoroutineScope,
-    headerHeightPx: Float, toolbarHeightPx: Float, showStopwatch: MutableState<Boolean>
-) {
-    val context = LocalContext.current
-    val launcher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                openCamera(context)
-            } else {
-                Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-    val collapseRange: Float = (headerHeightPx - toolbarHeightPx)
-    val collapseFraction: Float = (scroll.value / collapseRange).coerceIn(0f, 1f)
-    AnimatedVisibility(
-        visible = collapseFraction < 1f,
-        enter = fadeIn(),
-        exit = fadeOut()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(10.dp)
-        ) {
-            FloatingActionButton(
-                modifier = Modifier.align(Alignment.TopStart),
-                onClick = {
-                    scope.launch {
-                        drawerState.open()
-                    }
-                },
-            ) {
-                Icon(Icons.Filled.Menu, contentDescription = "Open menu")
-            }
-            DetailsActionButtons(
-                modifier = Modifier.align(Alignment.TopEnd),
-                scope = scope,
-                launcher = launcher,
-                showStopwatch = showStopwatch
-            )
-        }
-    }
-}
-
-@Composable
-fun DetailsActionButtons(
-    modifier: Modifier,
-    scope: CoroutineScope,
-    launcher: ManagedActivityResultLauncher<String, Boolean>,
-    showStopwatch: MutableState<Boolean>
-) {
-    Row(modifier = modifier) {
-        FloatingActionButton(onClick = { showStopwatch.value = !showStopwatch.value }) {
-            Icon(
-                imageVector = Icons.Filled.Timer,
-                contentDescription = "Show stopwatch"
-            )
-        }
-        FloatingActionButton(
-            modifier = Modifier.padding(start = 10.dp),
-            onClick = {
-                scope.launch {
-                    launcher.launch(Manifest.permission.CAMERA)
-                }
-            },
-        ) {
-            Icon(
-                imageVector = Icons.Filled.CameraAlt,
-                contentDescription = "Open Camera"
-            )
-        }
-    }
-}
-
-fun openCamera(context: Context) {
-    val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-    context.startActivity(intent)
-}
-

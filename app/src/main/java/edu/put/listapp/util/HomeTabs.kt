@@ -1,4 +1,4 @@
-package edu.put.listapp
+package edu.put.listapp.util
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsRun

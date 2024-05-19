@@ -9,5 +9,17 @@ data class TrackDetails(
         parentColumn = "id",
         entityColumn = "trackId"
     )
-    val records: List<Record>
+    val records: List<Record>,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "trackId"
+    )
+    val loops: List<Loop>,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "trackId"
+    )
+    val images: List<Image>,
 )

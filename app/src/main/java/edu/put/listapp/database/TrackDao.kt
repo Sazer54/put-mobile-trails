@@ -8,13 +8,19 @@ import androidx.room.Transaction
 @Dao
 interface TrackDao {
     @Insert
-    fun insertTrack(track: Track)
+    fun insertTrack(track: Track): Long
 
     @Insert
     fun insertRecord(record: Record)
 
+    @Insert
+    fun insertLoop(loop: Loop)
+
+    @Insert
+    fun insertImage(image: Image)
+
     @Query("SELECT * FROM track")
-    fun getAll(): List<Track>
+    fun getAllTracks(): List<Track>
 
     @Query("SELECT COUNT(*) from track")
     fun count(): Int
@@ -24,6 +30,9 @@ interface TrackDao {
     fun getTracksWithDetails(): List<TrackDetails>
 
     @Query("SELECT * FROM track WHERE id = :trackId")
-    fun getTrackDetailsById(trackId: Int): TrackDetails
+    fun getTrackDetailsById(trackId: Long): TrackDetails
+
+    @Query("DELETE FROM record WHERE trackId = :trackId")
+    fun deleteRecordsByTrackId(trackId: Long)
 
 }
