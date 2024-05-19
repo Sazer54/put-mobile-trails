@@ -1,6 +1,5 @@
 package edu.put.listapp.database
 
-import android.net.Uri
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index

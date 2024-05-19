@@ -293,8 +293,8 @@ fun PhoneLayout(
     trackDifficulty: TrackDifficulty,
     isTablet: Boolean
 ) {
-    var query = remember { mutableStateOf("") }
-    var active = remember { mutableStateOf(false) }
+    val query = remember { mutableStateOf("") }
+    val active = remember { mutableStateOf(false) }
     val filteredTracksList = tracksList.filter { track ->
         track.name.contains(query.value, ignoreCase = true)
     }

@@ -1,6 +1,8 @@
 package edu.put.listapp.util
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Hiking
 import androidx.compose.material.icons.filled.Home
@@ -27,8 +29,8 @@ enum class HomeTabs(
         text = "Easy Hike"
     ),
     HardTracks(
-        selectedIcon = Icons.Filled.DirectionsRun,
-        unselectedIcon = Icons.Outlined.DirectionsRun,
+        selectedIcon = Icons.AutoMirrored.Filled.DirectionsRun,
+        unselectedIcon = Icons.AutoMirrored.Outlined.DirectionsRun,
         text = "Hard Hike"
     ),
     Details(

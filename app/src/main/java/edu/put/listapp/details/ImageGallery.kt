@@ -1,7 +1,6 @@
 package edu.put.listapp.details
 
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding

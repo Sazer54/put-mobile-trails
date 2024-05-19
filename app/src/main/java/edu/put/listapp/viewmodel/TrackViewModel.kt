@@ -1,6 +1,5 @@
 package edu.put.listapp.viewmodel
 
-import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -21,7 +20,7 @@ import kotlinx.coroutines.withContext
 
 class TrackViewModel : ViewModel() {
 
-    var tracksList: List<Track>? = null;
+    var tracksList: List<Track>? = null
     var selectedTrack: MutableState<TrackDetails?> = mutableStateOf(null)
     var stopwatchTrack: MutableState<TrackDetails?> = mutableStateOf(null)
     var job: Job? = null
